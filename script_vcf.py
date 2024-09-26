@@ -21,6 +21,12 @@ headers = {
 vcf_directory = './Fichiers_VCF/'
 os.makedirs(vcf_directory, exist_ok=True)
 
+# Dictionnaire pour mapper les noms de fichiers aux IDs Google Drive correspondants
+file_id_map = {
+    'SFR.vcf': '1a2b3c4d5e6f7g8h9i0j',  # Remplace par l'ID réel du fichier Google Drive
+    'Orange.vcf': '2a3b4c5d6e7f8g9h0i1j'  # Remplace par l'ID réel du fichier Google Drive
+}
+
 # Fonction pour créer un fichier VCF avec plusieurs numéros de téléphone
 def create_vcf(contact):
     vcf_content = f"""BEGIN:VCARD
@@ -100,14 +106,14 @@ for record in records:
         # Créer le fichier VCF localement
         vcf_file_name = create_vcf(contact)
         
-        # Génère le lien de téléchargement basé sur l'ID du fichier
-        print(f"Ajoute manuellement le fichier dans Google Drive : {vcf_file_name}")
-        file_id = input(f"Entre l'ID Google Drive pour {vcf_file_name}: ")
-
-        # Générer le lien public du fichier
-        vcf_public_url = generate_public_link(file_id)
-        
-        # Télécharger le lien dans Airtable
-        upload_vcf_to_airtable(record_id, vcf_public_url)
+        # Vérifie si l'ID Google Drive du fichier est présent dans le dictionnaire
+        if vcf_file_name in file_id_map:
+            file_id = file_id_map[vcf_file_name]
+            vcf_public_url = generate_public_link(file_id)
+            
+            # Télécharger le lien dans Airtable
+            upload_vcf_to_airtable(record_id, vcf_public_url)
+        else:
+            print(f"ID Google Drive manquant pour le fichier {vcf_file_name}")
 
 print(f"Les fichiers VCF ont été créés localement et les liens publics ont été ajoutés dans Airtable.")
