@@ -46,7 +46,7 @@ N:{contact['nom']};;;;
     with open(file_path, 'w') as vcf_file:
         vcf_file.write(vcf_content)
     
-    return file_name  # Retourne juste le nom du fichier (on utilisera cela pour le lien)
+    return file_name  # Retourne juste le nom du fichier
 
 # Fonction pour récupérer les données depuis Airtable
 def fetch_airtable_data():
@@ -58,10 +58,9 @@ def fetch_airtable_data():
         print(f"Erreur lors de la récupération des données : {response.content}")
         return []
 
-# Fonction pour générer un lien public basé sur le nom du fichier (stocké dans un dossier Google Drive public)
-def generate_public_link(file_name):
-    folder_id = '1htCL15tExISSkPsET11f9yfNDndIXQQd'  # ID du dossier public sur Google Drive
-    return f"https://drive.google.com/uc?export=download&id={file_name}"
+# Fonction pour générer un lien public basé sur l'ID du fichier dans Google Drive
+def generate_public_link(file_id):
+    return f"https://drive.google.com/uc?export=download&id={file_id}"
 
 # Fonction pour mettre à jour Airtable avec l'URL du fichier VCF
 def upload_vcf_to_airtable(record_id, vcf_public_url):
@@ -101,8 +100,12 @@ for record in records:
         # Créer le fichier VCF localement
         vcf_file_name = create_vcf(contact)
         
-        # Générer un lien public pour ce fichier
-        vcf_public_url = generate_public_link(vcf_file_name)
+        # Génère le lien de téléchargement basé sur l'ID du fichier
+        print(f"Ajoute manuellement le fichier dans Google Drive : {vcf_file_name}")
+        file_id = input(f"Entre l'ID Google Drive pour {vcf_file_name}: ")
+
+        # Générer le lien public du fichier
+        vcf_public_url = generate_public_link(file_id)
         
         # Télécharger le lien dans Airtable
         upload_vcf_to_airtable(record_id, vcf_public_url)
