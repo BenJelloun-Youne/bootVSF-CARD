@@ -1,0 +1,32 @@
+name: Generate VCF and Update Airtable
+
+# Déclenchement automatique quotidien à minuit et déclenchement manuel
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Tous les jours à minuit UTC
+  workflow_dispatch:  # Permet de déclencher manuellement le workflow
+
+jobs:
+  generate_vcf:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Étape pour télécharger le code source du dépôt GitHub
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Étape pour configurer Python et installer les dépendances
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x  # Spécifie la version de Python à utiliser
+
+      # Étape pour installer les dépendances listées dans requirements.txt
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      # Étape pour exécuter le script Python qui génère les fichiers VCF
+      - name: Run VCF generation script
+        run: |
+          python script_vcf.py  # Remplace par le nom de ton script Python
