@@ -5,6 +5,8 @@ on:
   push:  # Exécute le script à chaque fois qu'il y a un push
     branches:
       - main
+  schedule:  # Exécute le workflow toutes les 3 heures
+    - cron: '0 */3 * * *'
 
 jobs:
   build:
