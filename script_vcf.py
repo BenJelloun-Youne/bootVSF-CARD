@@ -1,12 +1,52 @@
-import os
 import requests
+import os
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 
-# Token d'accès à Airtable
-AIRTABLE_API_KEY = 'patJlXWVeHJo0FIlV.9928df26ace030f55b9fb482d70f6f19d7149fa960fcdc37b1a0e86cba9c6611'
+# Scopes pour l'API Google Drive
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
-# Base et table Airtable
-BASE_ID = 'app7VeyHWjERCjVQK'
-TABLE_ID = 'tblU6E3rHJ31FoMWO'
+# Fonction pour créer le service Google Drive avec authentification
+def create_drive_service():
+    creds = None
+    # Le fichier token.json stocke les tokens d'accès et de rafraîchissement de l'utilisateur
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    # Si les credentials ne sont pas valides, on procède à l'authentification
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            # Le fichier credentials.json doit être dans le même répertoire que ce script
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES)
+            creds = flow.run_console()
+        # Sauvegarder les credentials pour la prochaine exécution
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+    service = build('drive', 'v3', credentials=creds)
+    return service
+
+# Fonction pour rendre un fichier partageable sur Google Drive
+def generate_public_url(file_id):
+    drive_service = create_drive_service()
+    
+    # Changer les permissions pour rendre le fichier public
+    drive_service.permissions().create(
+        fileId=file_id,
+        body={'role': 'reader', 'type': 'anyone'},
+    ).execute()
+    
+    # Obtenir le lien partageable
+    share_link = f"https://drive.google.com/uc?id={file_id}&export=download"
+    return share_link
+
+# Clé API et informations Airtable (en clair comme demandé)
+AIRTABLE_API_KEY = 'pat5ROT69wWTzJh0z.33dd5edb3a06e3d274b3645653feed9f2da64cc93661e244bac7a9d57f3fcffd'
+BASE_ID = 'app3bh6X0MpfH4Bql'
+TABLE_ID = 'tbl45xlWKsSOvmKb5'
 
 # URL de l'API Airtable pour la base et la table spécifiées
 url = f'https://api.airtable.com/v0/{BASE_ID}/{TABLE_ID}'
@@ -17,15 +57,9 @@ headers = {
     'Content-Type': 'application/json'
 }
 
-# Répertoire local pour stocker les fichiers VCF dans GitHub Actions
-vcf_directory = './Fichiers_VCF/'
+# Répertoire pour stocker les fichiers VCF
+vcf_directory = os.path.join(os.getcwd(), 'Fichiers VCF')
 os.makedirs(vcf_directory, exist_ok=True)
-
-# Dictionnaire pour mapper les noms de fichiers aux IDs Google Drive correspondants
-file_id_map = {
-    'SFR.vcf': '1a2b3c4d5e6f7g8h9i0j',  # Remplace par l'ID réel du fichier Google Drive
-    'Orange.vcf': '2a3b4c5d6e7f8g9h0i1j'  # Remplace par l'ID réel du fichier Google Drive
-}
 
 # Fonction pour créer un fichier VCF avec plusieurs numéros de téléphone
 def create_vcf(contact):
@@ -52,7 +86,7 @@ N:{contact['nom']};;;;
     with open(file_path, 'w') as vcf_file:
         vcf_file.write(vcf_content)
     
-    return file_name  # Retourne juste le nom du fichier
+    return file_path
 
 # Fonction pour récupérer les données depuis Airtable
 def fetch_airtable_data():
@@ -64,9 +98,21 @@ def fetch_airtable_data():
         print(f"Erreur lors de la récupération des données : {response.content}")
         return []
 
-# Fonction pour générer un lien public basé sur l'ID du fichier dans Google Drive
-def generate_public_link(file_id):
-    return f"https://drive.google.com/uc?export=download&id={file_id}"
+# Fonction pour télécharger les fichiers VCF sur Google Drive et obtenir le lien public
+def upload_to_drive_and_get_link(file_path):
+    drive_service = create_drive_service()
+    file_name = os.path.basename(file_path)
+    
+    # Télécharger le fichier sur Google Drive
+    file_metadata = {'name': file_name, 'mimeType': 'text/vcard'}
+    media = MediaFileUpload(file_path, mimetype='text/vcard')
+    uploaded_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    
+    # Rendre le fichier public et obtenir l'URL
+    file_id = uploaded_file.get('id')
+    public_url = generate_public_url(file_id)
+    
+    return public_url
 
 # Fonction pour mettre à jour Airtable avec l'URL du fichier VCF
 def upload_vcf_to_airtable(record_id, vcf_public_url):
@@ -91,7 +137,7 @@ def upload_vcf_to_airtable(record_id, vcf_public_url):
 # Récupérer les données depuis Airtable
 records = fetch_airtable_data()
 
-# Créer les vCards pour chaque enregistrement et générer un lien public
+# Créer les vCards pour chaque enregistrement et les télécharger sur Drive, puis les attacher dans Airtable
 for record in records:
     fields = record['fields']
     record_id = record['id']
@@ -103,17 +149,13 @@ for record in records:
             "numero2": fields.get('Numéro 2', ''),
             "numero3": fields.get('Numéro 3', '')
         }
-        # Créer le fichier VCF localement
-        vcf_file_name = create_vcf(contact)
+        # Créer le fichier VCF
+        vcf_file_path = create_vcf(contact)
         
-        # Vérifie si l'ID Google Drive du fichier est présent dans le dictionnaire
-        if vcf_file_name in file_id_map:
-            file_id = file_id_map[vcf_file_name]
-            vcf_public_url = generate_public_link(file_id)
-            
-            # Télécharger le lien dans Airtable
-            upload_vcf_to_airtable(record_id, vcf_public_url)
-        else:
-            print(f"ID Google Drive manquant pour le fichier {vcf_file_name}")
+        # Télécharger sur Google Drive et obtenir l'URL publique
+        vcf_public_url = upload_to_drive_and_get_link(vcf_file_path)
+        
+        # Télécharger le lien dans Airtable
+        upload_vcf_to_airtable(record_id, vcf_public_url)
 
-print(f"Les fichiers VCF ont été créés localement et les liens publics ont été ajoutés dans Airtable.")
+print("Les fichiers VCF ont été créés, téléchargés sur Google Drive, et ajoutés dans Airtable.")
