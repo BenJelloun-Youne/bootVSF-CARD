@@ -49,7 +49,8 @@ N:{contact['nom']};;;;
 # Fonction pour uploader le fichier sur un service temporaire (file.io)
 def upload_to_temp_storage(file_path):
     with open(file_path, 'rb') as file_data:
-        response = requests.post('https://file.io', files={'file': file_data})
+        # Ici on précise bien le type MIME pour le fichier VCF
+        response = requests.post('https://file.io', files={'file': ('vcard.vcf', file_data, 'text/vcard')})
         if response.status_code == 200:
             return response.json().get('link')  # Retourne le lien de téléchargement
         else:
