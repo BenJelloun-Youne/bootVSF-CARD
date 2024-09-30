@@ -1,5 +1,6 @@
 import requests
 import os
+import base64
 
 # Clé API et informations Airtable
 AIRTABLE_API_KEY = 'pat5ROT69wWTzJh0z.33dd5edb3a06e3d274b3645653feed9f2da64cc93661e244bac7a9d57f3fcffd'
@@ -19,6 +20,21 @@ headers = {
 vcf_directory = os.path.join(os.getcwd(), 'Fichiers VCF')
 os.makedirs(vcf_directory, exist_ok=True)
 
+# Fonction pour télécharger l'image et l'encoder en Base64
+def encode_image_to_base64(image_url):
+    try:
+        response = requests.get(image_url)
+        if response.status_code == 200:
+            # Encoder l'image en base64
+            encoded_image = base64.b64encode(response.content).decode('utf-8')
+            return encoded_image
+        else:
+            print(f"Erreur lors du téléchargement de l'image : {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Erreur lors de l'encodage de l'image : {e}")
+        return None
+
 # Fonction pour créer un fichier VCF avec plusieurs numéros de téléphone et une image
 def create_vcf(contact):
     vcf_content = f"""BEGIN:VCARD
@@ -34,9 +50,9 @@ N:{contact['nom']};;;;
     if contact.get('numero3'):
         vcf_content += f"TEL;TYPE=CELL:{contact['numero3']}\n"
     
-    # Ajouter une image si elle est disponible
-    if contact.get('image_url'):
-        vcf_content += f"PHOTO;VALUE=URI:{contact['image_url']}\n"
+    # Ajouter l'image encodée en base64 si elle est disponible
+    if contact.get('image_base64'):
+        vcf_content += f"PHOTO;ENCODING=b;TYPE=JPEG:{contact['image_base64']}\n"
 
     vcf_content += "END:VCARD\n"
 
@@ -108,7 +124,8 @@ for record in records:
         
         # Vérifier si l'image est présente
         if 'Image' in fields and len(fields['Image']) > 0:
-            contact['image_url'] = fields['Image'][0]['url']  # Récupérer l'URL de la première image
+            image_url = fields['Image'][0]['url']  # Récupérer l'URL de la première image
+            contact['image_base64'] = encode_image_to_base64(image_url)  # Encoder l'image en Base64
         
         # Créer le fichier VCF
         vcf_file_path = create_vcf(contact)
