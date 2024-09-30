@@ -1,6 +1,8 @@
 name: Exécuter le script VCF
 
 on:
+  issues:  # Ce déclencheur réagit à la création d'une nouvelle issue
+    types: [opened]  # Déclenchement lorsque l'issue est ouverte
   workflow_dispatch:  # Permet l'exécution manuelle via GitHub Actions
   push:  # Exécute le script à chaque fois qu'il y a un push
     branches:
