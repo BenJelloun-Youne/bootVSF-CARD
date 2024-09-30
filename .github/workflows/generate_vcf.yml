@@ -23,6 +23,9 @@ jobs:
       with:
         python-version: '3.x'
 
+    - name: Attendre 30 secondes
+      run: sleep 30  # Met le processus en pause pendant 30 secondes
+
     - name: Installer les dépendances
       run: |
         python -m pip install --upgrade pip
