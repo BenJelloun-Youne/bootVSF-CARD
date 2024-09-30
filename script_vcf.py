@@ -19,7 +19,7 @@ headers = {
 vcf_directory = os.path.join(os.getcwd(), 'Fichiers VCF')
 os.makedirs(vcf_directory, exist_ok=True)
 
-# Fonction pour créer un fichier VCF avec plusieurs numéros de téléphone
+# Fonction pour créer un fichier VCF avec plusieurs numéros de téléphone et une image
 def create_vcf(contact):
     vcf_content = f"""BEGIN:VCARD
 VERSION:3.0
@@ -33,6 +33,10 @@ N:{contact['nom']};;;;
         vcf_content += f"TEL;TYPE=CELL:{contact['numero2']}\n"
     if contact.get('numero3'):
         vcf_content += f"TEL;TYPE=CELL:{contact['numero3']}\n"
+    
+    # Ajouter une image si elle est disponible
+    if contact.get('image_url'):
+        vcf_content += f"PHOTO;VALUE=URI:{contact['image_url']}\n"
 
     vcf_content += "END:VCARD\n"
 
@@ -101,6 +105,11 @@ for record in records:
             "numero2": fields.get('Numéro 2', ''),
             "numero3": fields.get('Numéro 3', '')
         }
+        
+        # Vérifier si l'image est présente
+        if 'Image' in fields and len(fields['Image']) > 0:
+            contact['image_url'] = fields['Image'][0]['url']  # Récupérer l'URL de la première image
+        
         # Créer le fichier VCF
         vcf_file_path = create_vcf(contact)
         
